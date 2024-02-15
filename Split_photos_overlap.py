@@ -36,31 +36,26 @@ class ImageMergerApp:
                 merged_image.save(save_path)
                 print(f"Merged image saved at {save_path}")
 
-    def main_resize(image, short_size_in_pixels):
-        if image is None:
-            print('Image not found or cannot be loaded.')
-        else:
-            # Get the original resolution
-            original_width, original_height = image.size
-            print(f'Original Resolution: {original_width}x{original_height}')
+    #def merge_images_in_order(self):
+    #    if not self.image_files:
+    #        return None
 
-            # Determine the target short side length
-            target_short_side = short_size_in_pixels
+    #    overlap_pixels = 20         # нахлёст верхнего на нижнее
+    #    shift_pixels = 30           # сдвиг вправо
 
-            # Calculate the new dimensions while preserving the aspect ratio
-            if original_width < original_height:
-                new_width = target_short_side
-                new_height = int(original_height * (target_short_side / original_width))
-            else:
-                new_height = target_short_side
-                new_width = int(original_width * (target_short_side / original_height))
+    #    merged_height = sum(Image.open(img).height for img in self.image_files) - (len(self.image_files) - 1) * overlap_pixels
+    #    merged_width = max(Image.open(img).width for img in self.image_files) + shift_pixels
+    #    merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
 
-            # Resize the image
-            resized_image = image.resize((new_width, new_height))
-            print(f'New Resolution: {new_width}x{new_height}')
+    #    current_height = 0
+    #    for i, img_path in enumerate(self.image_files):
+    #        img = Image.open(img_path)
+    #        if i > 0:
+    #            current_height -= overlap_pixels
+    #        merged_image.paste(img, (shift_pixels, current_height))
+    #        current_height += img.height
 
-            #Return the resized image (optional)
-            return(resized_image)
+    #    return merged_image
 
     def merge_images_in_order(self):
         if not self.image_files:
@@ -68,21 +63,32 @@ class ImageMergerApp:
 
         overlap_pixels = 20         # нахлёст верхнего на нижнее
         shift_pixels = 30           # сдвиг вправо
+        target_short_side = 500     # размер короткой стороны при сжатии
 
-        merged_height = sum(Image.open(img).height for img in self.image_files) - (len(self.image_files) - 1) * overlap_pixels
-        merged_width = max(Image.open(img).width for img in self.image_files) + shift_pixels
+        compressed_images = []
+
+        for img_path in self.image_files:
+            img = Image.open(img_path)
+            # Resize the image to have a short side of 500 pixels
+            short_side = min(img.width, img.height)
+            scale_factor = target_short_side / short_side
+            new_width = round(img.width * scale_factor)
+            new_height = round(img.height * scale_factor)
+            compressed_img = img.resize((new_width, new_height), Image.LANCZOS)
+            compressed_images.append(compressed_img)
+
+        merged_height = sum(img.height for img in compressed_images) - (len(compressed_images) - 1) * overlap_pixels
+        merged_width = max(img.width for img in compressed_images) + shift_pixels
         merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
 
         current_height = 0
-        for i, img_path in enumerate(self.image_files):
-            img = Image.open(img_path)
+        for i, img in enumerate(compressed_images):
             if i > 0:
                 current_height -= overlap_pixels
             merged_image.paste(img, (shift_pixels, current_height))
             current_height += img.height
 
         return merged_image
-
 
 def main():
     root = tk.Tk()
